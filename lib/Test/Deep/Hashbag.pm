@@ -7,8 +7,6 @@ use warnings;
 use Test::Deep::Cmp;
 
 use Data::Dumper;
-use Graph::Directed;
-use Graph::MaxFlow qw(max_flow);
 use Scalar::Util qw(blessed reftype);
 use Test::Deep::Hash ();
 
@@ -192,48 +190,37 @@ EOM
   my %matchers_used = map { $_ => 0 } 0..$#unkeyed;
 
   if (%match_by_got) {
-    my $graph = Graph::Directed->new;
+    my %graph;
 
     for my $g (keys %match_by_got) {
-      $graph->add_weighted_edge("source", "g$g", 1);
+      $graph{source}{"g$g"} = 1;
 
       for my $m (keys %{$match_by_got{$g}}) {
-        $graph->add_weighted_edge("g$g", "m$m", 1);
+        $graph{"g$g"}{"m$m"} = 1;
       }
     }
 
     for my $m (keys %match_by_want) {
-      $graph->add_weighted_edge("m$m", "sink", 1);
+      $graph{"m$m"}{sink} = 1;
     }
 
     # Generate a flow graph where each edge from the source *should* have
-    # a weight of 1 if it was used
-    my $flow_graph = max_flow($graph, "source", "sink");
+    # a weight of 0 if it was used
+    $max_flow_found = max_flow(\%graph);
 
-    for my $v ($flow_graph->successors("source")) {
-      my $used = $flow_graph->get_edge_weight("source", $v);
-      $max_flow_found += $used;
-
-      if ($used) {
-        my $k = $v;
-        $k =~ s/^g//;
-
+    for my $g (keys %match_by_got) {
+      if ($graph{source}{"g$g"} == 0) {
         # Record that in our best case (highest flow) this key matched; to be
         # used in diagnostics later
-        $tocheck[$k]{matched} = 1;
+        $tocheck[$g]{matched} = 1;
       }
     }
 
-    for my $v ($flow_graph->predecessors("sink")) {
-      my $used = $flow_graph->get_edge_weight($v, "sink");
-
-      if ($used) {
-        my $k = $v;
-        $k =~ s/^m//;
-
+    for my $m (keys %match_by_want) {
+      if ($graph{"m$m"}{sink} == 0) {
         # Record that in our best case (highest flow) this matcher matched; to be
         # used in diagnostics later
-        $matchers_used{$k} = 1;
+        $matchers_used{$m} = 1;
       }
     }
 
@@ -287,6 +274,69 @@ sub diagnostics {
 
 sub hashbag {
   return Test::Deep::Hashbag->new(@_);
+}
+
+# Adapted https://en.wikipedia.org/wiki/Ford%E2%80%93Fulkerson_algorithm#Python_implementation_of_the_Edmonds%E2%80%93Karp_algorithm
+sub bfs {
+  my ($graph, $source, $sink, $parent) = @_;
+
+  my %visited;
+
+  my @todo = $source;
+
+  while (@todo) {
+    my $item = pop @todo;
+
+    for my $v (keys $graph->{$item}->%*) {
+      next unless $graph->{$item}{$v};
+
+      next if $visited{$v}++;
+
+      $parent->{$v} = $item;
+
+      push @todo, $v;
+    }
+  }
+
+  return !! $visited{$sink};
+}
+
+sub max_flow {
+  my ($graph) = @_;
+
+  my $max_flow = 0;
+
+  my $parent = {};
+
+  while (bfs($graph, 'source', 'sink', $parent)) {
+    my $c = 'sink';
+
+    # No way we're hitting a flow this high
+    my $path_flow = 'Inf';
+
+    # Find our lowest flow
+    while ($c && $c ne 'source') {
+      my $pc = $parent->{$c};
+
+      $path_flow = $graph->{$pc}{$c} if $graph->{$pc}{$c} < $path_flow;
+
+      $c = $pc;
+    }
+
+    $max_flow += $path_flow;
+
+    $c = 'sink';
+
+    # Adjust flow bidirectionally from our found path
+    while ($c && $c ne 'source') {
+      my $pc = $parent->{$c};
+      $graph->{$pc}{$c} -= $path_flow;
+      $graph->{$c}{$pc} += $path_flow;
+      $c = $pc;
+    }
+  }
+
+  return $max_flow;
 }
 
 1;
@@ -359,6 +409,7 @@ L<Test::Deep>
 
 Thanks to rjbs for pointing out a better algorithm than what I had
 originally, and to waltman for Graph::MaxFlow which implemented the harder
-bits of it.
+bits of it (until I replaced Graph / Graph::MaxFlow with my own implementation
+to avoid dependencies :)).
 
 =cut
