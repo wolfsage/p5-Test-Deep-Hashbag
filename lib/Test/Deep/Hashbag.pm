@@ -373,7 +373,7 @@ This module provides C<hashbag>, which is like L<Test::Deep>'s C<bag()> but
 for B<hashes>.
 
 The idea is it lets you test that a hash has certain B<values>, but you don't
-know or care what the keys are for those specic values.
+know or care what the keys are for those specific values.
 
 =head1 EXPORTS
 
@@ -395,11 +395,19 @@ were not used in this best case.
 
 B<NOTE:>
 
-With complex matches, the printed information may seem misleading can provide
-different lists of keys or matchers that didn't match on reruns of the test.
-This indicates that some of the matchers can match multiple keys, and during
-different test runs they did so in the best case scenario as the matching
-order is not deterministic.
+With complex matches, the printed information may seem misleading; it can
+provide different lists of keys or matchers that didn't match on reruns of
+the test. This indicates that some of the matchers can match multiple keys,
+and during different test runs they did so in the best case scenario as the
+matching order is not deterministic.
+
+B<NOTE:>
+
+With larger and larger amounts of values to test, matching will get slower
+and slower, due to how this module works (testing every expected element
+against every input). In the future there will be changes to speed up the
+simple best/worst cases, but there will always be inherent slowness with
+large amounts of data. Use with caution.
 
 =head1 SEE ALSO
 
