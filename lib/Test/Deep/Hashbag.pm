@@ -392,8 +392,8 @@ __END__
 
 =head1 DESCRIPTION
 
-This module provides C<hashbag>, which is like L<Test::Deep>'s C<bag()> but
-for B<hashes>.
+This module provides C<hashbag> and C<superhashbagof>, which are like
+L<Test::Deep>'s C<bag()> and C<superbagof()>, but for B<hashes>.
 
 The idea is it lets you test that a hash has certain B<values>, but you don't
 know or care what the keys are for those specific values.
@@ -416,7 +416,16 @@ match, and how many did match in the best possible case. Any keys that
 matches could not be found for will be printed out, as will any matchers that
 were not used in this best case.
 
-B<NOTE:>
+=head2 superhashbagof
+
+  cmp_deeply(\%got, superhashbagof(k => 'v', ignore() => 'v2', ...), $desc);
+
+Like C<hashbag> above, but C<%got> may have extra keys/values in it that we
+don't care about.
+
+=head1 NOTES
+
+B<Diagnostic output variability>
 
 With complex matches, the printed information may seem misleading; it can
 provide different lists of keys or matchers that didn't match on reruns of
@@ -424,7 +433,7 @@ the test. This indicates that some of the matchers can match multiple keys,
 and during different test runs they did so in the best case scenario as the
 matching order is not deterministic.
 
-B<NOTE:>
+B<Performance on large data sets>
 
 With larger and larger amounts of values to test, matching will get slower
 and slower, due to how this module works (testing every expected element
