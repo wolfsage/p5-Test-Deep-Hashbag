@@ -11,11 +11,17 @@ use Scalar::Util qw(blessed reftype);
 use Test::Deep::Hash ();
 
 use Exporter 'import';
-our @EXPORT = qw(hashbag);
+our @EXPORT = qw(hashbag superhashbagof);
 
 sub init {
   my $self = shift;
+  my $style = shift;
   my @want = @_;
+
+  unless ($style eq 'hashbag' || $style eq 'superhashbag') {
+    require Carp;
+    Carp::confess("Unknown style '$style' requested. How even?!");
+  }
 
   unless (@want % 2 == 0) {
     require Carp;
@@ -46,6 +52,9 @@ sub init {
   }
 
   $self->{val} = \@want;
+  $self->{style} = $style;
+
+  return;
 }
 
 sub descend {
@@ -102,7 +111,13 @@ EOM
     }
   } grep { ! exists $required{$_} } keys %$have;
 
-  if (@tocheck != @unkeyed) {
+  if ($self->{style} eq 'hashbag' && @tocheck == 0) {
+    # hashbag() and no input keys left? We're good!
+    return 1;
+
+  } elsif ($self->{style} eq 'hashbag' && @tocheck != @unkeyed) {
+    # With hashbag(), we must have as many items left over as we have unkeyed
+    # matchers to check against
     my $ecount = 0+@unkeyed;
     my $gcount = 0+@tocheck;
 
@@ -123,9 +138,9 @@ Remaining keys: $tocheck_desc
 EOM
 
     return 0;
-  }
 
-  if (@tocheck == 0) {
+  } elsif ($self->{style} eq 'superhashbag' && @unkeyed == 0) {
+    # superhashbagof() and no matchers left? We're good
     return 1;
   }
 
@@ -224,6 +239,10 @@ EOM
       }
     }
 
+    # With hashbag() there are as many items to check as there are @unkeyed.
+    # With superhashbagof(), @unkeyed is the matchers we need to match, and
+    # there may be many more items to check against, but max flow can only
+    # go up to @unkeyed. In both cases, if max flow == unkeyed, we're good.
     return 1 if $max_flow_found == @unkeyed;
   }
 
@@ -273,7 +292,11 @@ sub diagnostics {
 }
 
 sub hashbag {
-  return Test::Deep::Hashbag->new(@_);
+  return Test::Deep::Hashbag->new('hashbag', @_);
+}
+
+sub superhashbagof {
+  return Test::Deep::Hashbag->new('superhashbag', @_);
 }
 
 # Adapted https://en.wikipedia.org/wiki/Ford%E2%80%93Fulkerson_algorithm#Python_implementation_of_the_Edmonds%E2%80%93Karp_algorithm
