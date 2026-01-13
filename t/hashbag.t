@@ -1,14 +1,14 @@
 use strict;
 use warnings;
 
+use lib 't/lib';
+use TDHTester;
+
 use Test::More 0.88;
 use Test::Fatal;
 
 use Test::Deep;
 use Test::Deep::Hashbag;
-
-use lib 't/lib';
-use TDHTester;
 
 # Good cases
 

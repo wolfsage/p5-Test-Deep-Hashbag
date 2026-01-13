@@ -1,17 +1,15 @@
 use strict;
 use warnings;
 
+use lib 't/lib';
+use TDHTester;
+
 use Test::Tester;
 use Test::More 0.88;
 use Test::Fatal;
 
 use Test::Deep;
 use Test::Deep::Hashbag;
-
-Test::Deep::builder(Test::Tester::capture());
-
-use lib 't/lib';
-use TDHTester;
 
 # Good cases
 

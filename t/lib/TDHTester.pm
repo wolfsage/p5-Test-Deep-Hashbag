@@ -3,9 +3,9 @@ package TDHTester;
 use strict;
 use warnings;
 
+use Test::Tester;
 use Test::More 0.88;
 use Test::Deep;
-use Test::Tester;
 
 use Exporter 'import';
 our @EXPORT = qw(good_test bad_test);
